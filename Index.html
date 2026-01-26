@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>SQUARE M</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{
+font-family:Arial,Helvetica,sans-serif;
+margin:0;
+background:#0e0e0e;
+color:#fff
+}
+
+header{
+background:#111;
+padding:15px;
+text-align:center;
+font-size:22px;
+font-weight:bold
+}
+
+.container{padding:15px}
+
+.card{
+background:#1a1a1a;
+padding:15px;
+border-radius:10px;
+margin-bottom:12px
+}
+
+input,select,textarea{
+width:100%;
+padding:8px;
+margin-top:6px;
+border-radius:6px;
+border:none
+}
+
+button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:8px;
+font-size:16px
+}
+
+.primary{background:#00ff88}
+.secondary{background:#333;color:white}
+.danger{background:#ff4444}
+
+.small{font-size:13px;color:#aaa}
+
+.project{
+padding:10px;
+background:#222;
+border-radius:8px;
+margin-top:8px
+}
+
+footer{
+position:fixed;
+bottom:0;
+width:100%;
+background:#111;
+padding:8px;
+text-align:center
+}
+
+footer a{color:#00ff88;text-decoration:none}
+</style>
+</head>
+
+<body>
+
+<header>SQUARE M</header>
+
+<div class="container" id="home">
+
+<div class="card">
+<h3>📐 Bem-vindo ao SQUARE M</h3>
+<p class="small">
+Organize medições por projetos e cômodos, calcule áreas em m², adicione medidas lineares
+(rodapés, nichos, acabamentos) e gere PDFs profissionais para orçamento.
+Tudo em poucos toques.
+</p>
+
+<button class="primary" onclick="novoProjeto()">➕ Criar novo projeto</button>
+</div>
+
+<div class="card">
+<h3>📁 Histórico de projetos</h3>
+<div id="listaProjetos"></div>
+</div>
+
+</div>
+
+<div class="container" id="projeto" style="display:none">
+
+<div class="card">
+<input id="nomeProjeto" placeholder="Nome do projeto">
+<textarea id="obsProjeto" placeholder="Observações"></textarea>
+</div>
+
+<div class="card">
+<h3>➕ Novo cômodo</h3>
+
+<input id="comodo" placeholder="Nome do cômodo">
+
+<label><input type="checkbox" id="alt"> Altura</label>
+<input id="vAlt" type="number">
+
+<label><input type="checkbox" id="lar"> Largura</label>
+<input id="vLar" type="number">
+
+<label><input type="checkbox" id="com"> Comprimento</label>
+<input id="vCom" type="number">
+
+<input id="extra" placeholder="Campo extra (opcional)">
+
+<h4>Lineares (opcional)</h4>
+<select id="tipoLinear">
+<option>Rodapé</option>
+<option>Nicho</option>
+<option>Acabamento</option>
+<option>Outro</option>
+</select>
+
+<input id="linear" type="number" placeholder="Metros lineares">
+
+<label><input type="checkbox" id="incLinear"> Incluir lineares no total</label>
+
+<button class="secondary" onclick="addComodo()">Adicionar cômodo</button>
+</div>
+
+<div class="card">
+<h3>📋 Cômodos</h3>
+<div id="listaComodos"></div>
+<p>Total projeto: <span id="total">0</span> m²</p>
+</div>
+
+<button class="primary" onclick="salvarProjeto()">💾 Salvar projeto</button>
+<button class="secondary" onclick="gerarPDF()">📄 Gerar PDF</button>
+<button class="danger" onclick="voltar()">⬅ Voltar</button>
+
+</div>
+
+<footer>
+<a href="https://wa.me/5548999851297?text=Oi,+tenho+interesse+no+SQUARE+M">WhatsApp</a>
+</footer>
+
+<script>
+let projetos=JSON.parse(localStorage.getItem("squarem"))||[];
+let atual={comodos:[]};
+
+function renderHome(){
+listaProjetos.innerHTML="";
+projetos.forEach((p,i)=>{
+listaProjetos.innerHTML+=`
+<div class="project" onclick="abrir(${i})">
+<b>${p.nome}</b><br>${p.comodos.length} cômodos
+</div>`;
+});
+}
+renderHome();
+
+function novoProjeto(){
+atual={comodos:[]};
+home.style.display="none";
+projeto.style.display="block";
+listaComodos.innerHTML="";
+total.innerText=0;
+}
+
+function voltar(){
+projeto.style.display="none";
+home.style.display="block";
+renderHome();
+}
+
+function addComodo(){
+let dims=[];
+if(alt.checked) dims.push(vAlt.value);
+if(lar.checked) dims.push(vLar.value);
+if(com.checked) dims.push(vCom.value);
+
+if(dims.length<2){alert("Escolha ao menos 2 dimensões");return;}
+
+let area=dims[0]*dims[1];
+let lin=parseFloat(linear.value)||0;
+if(incLinear.checked) area+=lin;
+
+atual.comodos.push({
+nome:comodo.value,
+area,
+linear:lin,
+tipo:tipoLinear.value,
+extra:extra.value
+});
+
+renderComodos();
+}
+
+function renderComodos(){
+listaComodos.innerHTML="";
+let t=0;
+atual.comodos.forEach((c,i)=>{
+t+=c.area;
+listaComodos.innerHTML+=`
+<div class="project">
+${c.nome} – ${c.area.toFixed(2)} m²
+<button onclick="del(${i})">Excluir</button>
+</div>`;
+});
+total.innerText=t.toFixed(2);
+}
+
+function del(i){
+atual.comodos.splice(i,1);
+renderComodos();
+}
+
+function salvarProjeto(){
+atual.nome=nomeProjeto.value;
+atual.obs=obsProjeto.value;
+projetos.push(atual);
+localStorage.setItem("squarem",JSON.stringify(projetos));
+voltar();
+}
+
+function abrir(i){
+atual=projetos[i];
+home.style.display="none";
+projeto.style.display="block";
+renderComodos();
+}
+
+function gerarPDF(){
+const {jsPDF}=window.jspdf;
+let pdf=new jsPDF();
+let y=10;
+pdf.text("SQUARE M",10,y);y+=8;
+
+atual.comodos.forEach(c=>{
+pdf.text(`${c.nome}: ${c.area.toFixed(2)} m²`,10,y);
+y+=7;
+});
+
+pdf.save("squarem.pdf");
+}
+</script>
+
+</body>
+  </html>
